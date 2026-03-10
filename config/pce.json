@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "database": {
+    "path": "~/.openclaw/workspace/data/personal.db"
+  },
+  "consumable_defaults": {
+    "supplement": 60,
+    "shampoo": 45,
+    "conditioner": 45,
+    "body_soap": 40,
+    "toothpaste": 30,
+    "detergent": 30,
+    "dish_soap": 25,
+    "hand_soap": 20,
+    "tissue": 14,
+    "toilet_paper": 14,
+    "trash_bag": 21,
+    "wrap": 30,
+    "coffee": 14,
+    "rice": 21,
+    "cooking_oil": 60,
+    "soy_sauce": 60,
+    "default": 30
+  },
+  "alert_threshold": 0.8,
+  "csv_encoding_order": ["utf-8-sig", "utf-8", "shift_jis", "cp932"],
+  "video": {
+    "frame_interval_seconds": 5,
+    "max_frames": 100
+  },
+  "heartbeat": {
+    "consumable_check": "0 9 * * *",
+    "weekly_report": "0 20 * * 0",
+    "purchase_suggest": "0 10 * * 6"
+  }
+}
