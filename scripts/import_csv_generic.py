@@ -123,7 +123,7 @@ def import_generic_csv(csv_path: str, db_path: str, source: str) -> dict:
         mapping = auto_detect_mapping(headers)
 
         if "item_name" not in mapping and "price" not in mapping:
-            print(f"Warning: Could not auto-detect column mapping.")
+            print("Warning: Could not auto-detect column mapping.")
             print(f"Available columns: {headers}")
             print(f"Detected mapping: {mapping}")
             print("Will import with available data.")

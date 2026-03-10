@@ -33,7 +33,7 @@ def load_ec_formats() -> dict:
     if not config_path.exists():
         config_path = Path.home() / ".openclaw" / "workspace" / "config" / "ec_formats.json"
     if not config_path.exists():
-        print(f"Error: ec_formats.json not found")
+        print("Error: ec_formats.json not found")
         sys.exit(1)
     with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)

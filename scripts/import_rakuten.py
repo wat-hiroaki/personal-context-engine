@@ -182,7 +182,7 @@ def main():
 
     stats = import_rakuten_csv(csv_path, db_path)
 
-    print(f"\nImport complete (Rakuten)")
+    print("\nImport complete (Rakuten)")
     print(f"  Imported: {stats['imported']}")
     print(f"  Skipped (duplicate): {stats['skipped']}")
     print(f"  Errors: {stats['errors']}")

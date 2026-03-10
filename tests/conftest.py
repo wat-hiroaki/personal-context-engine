@@ -1,5 +1,4 @@
 """Shared test fixtures for Personal Context Engine."""
-import os
 import sqlite3
 import pytest
 from pathlib import Path

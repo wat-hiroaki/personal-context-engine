@@ -21,14 +21,12 @@ import os
 import re
 import sqlite3
 import argparse
-import json
 import hashlib
 from pathlib import Path
-from datetime import datetime
 
 try:
     import pytesseract
-    from PIL import Image
+    from PIL import Image  # noqa: F401 — needed to verify Pillow install
     import cv2
     import numpy as np
 except ImportError as e:
@@ -396,7 +394,7 @@ def main():
 
     result = scan_receipt(args.image_path, db_path, args.lang)
 
-    print(f"\nReceipt Scan Results")
+    print("\nReceipt Scan Results")
     print(f"{'=' * 40}")
     print(f"Store:      {result['store'] or '(unknown)'}")
     print(f"Date:       {result['date'] or '(unknown)'}")

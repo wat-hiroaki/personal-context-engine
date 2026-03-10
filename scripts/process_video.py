@@ -22,7 +22,6 @@ import argparse
 import tempfile
 import shutil
 from pathlib import Path
-from datetime import datetime
 
 SCRIPT_DIR = Path(__file__).parent
 CONFIG_DIR = SCRIPT_DIR.parent / "config"
@@ -340,7 +339,7 @@ def main():
     )
 
     print(f"\n{'=' * 50}")
-    print(f"Video Processing Complete")
+    print("Video Processing Complete")
     print(f"{'=' * 50}")
     print(f"Session ID:  {result['session_id']}")
     print(f"Frames:      {result['frame_count']}")
@@ -351,7 +350,7 @@ def main():
     print("and present detected items for your confirmation.")
 
     if args.keep_frames and result["frames_dir"]:
-        print(f"\nTo clean up frames later:")
+        print("\nTo clean up frames later:")
         print(f"  python3 process_video.py --cleanup {result['frames_dir']}")
 
 

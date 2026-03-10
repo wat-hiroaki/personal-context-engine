@@ -197,7 +197,7 @@ def main():
 
     stats = import_amazon_csv(csv_path, db_path)
 
-    print(f"\nImport complete (Amazon)")
+    print("\nImport complete (Amazon)")
     print(f"  Imported: {stats['imported']}")
     print(f"  Skipped (duplicate): {stats['skipped']}")
     print(f"  Errors: {stats['errors']}")
