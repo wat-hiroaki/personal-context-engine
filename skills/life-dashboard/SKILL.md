@@ -1,3 +1,14 @@
+---
+name: life-dashboard
+description: Cross-domain life data analysis with spending reports, consumable predictions, and automated alerts
+version: 0.3.0
+triggers:
+  - pattern: "(report|レポート|dashboard|分析|支出|spending)"
+  - pattern: "(buy list|購入リスト|買うべき|recommend)"
+tools:
+  - sqlite3
+---
+
 # Life Dashboard
 
 全ライフデータを横断的に分析し、インサイトを提供する統合スキル。

@@ -1,3 +1,16 @@
+---
+name: possession-manager
+description: Register, search, update, and track personal possessions with consumable replenishment alerts
+version: 0.2.0
+triggers:
+  - pattern: "(register|add|bought|buy|購入|登録|買った)"
+  - pattern: "(list|search|show|一覧|検索|リスト)"
+  - pattern: "(opened|empty|low|開けた|なくなった)"
+  - pattern: "(replenish|restock|補充|なくなるもの)"
+tools:
+  - sqlite3
+---
+
 # Possession Manager
 
 所有物の登録・検索・更新・削除、および消耗品の残量追跡と補充リマインドを行う中核スキル。

@@ -212,43 +212,46 @@ def import_csv(csv_path: str, db_path: str, format_key: str | None, source_overr
         print(f"Column mapping: item={col_item}, price={col_price}, date={col_date}, order={col_order}")
 
         conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA foreign_keys = ON")
         cursor = conn.cursor()
 
-        for row in reader:
-            try:
-                item_name = row.get(col_item, "").strip() if col_item else ""
-                price_str = row.get(col_price, "") if col_price else ""
-                price, currency = parse_price(price_str, currency_symbols)
-                purchase_date = parse_date(row.get(col_date, ""), date_formats) if col_date else None
-                order_id = row.get(col_order, "").strip() if col_order else None
-                category = row.get(col_category, "").strip() if col_category else None
+        try:
+            for row_num, row in enumerate(reader, start=2):  # start=2 because row 1 is header
+                try:
+                    item_name = row.get(col_item, "").strip() if col_item else ""
+                    price_str = row.get(col_price, "") if col_price else ""
+                    price, currency = parse_price(price_str, currency_symbols)
+                    purchase_date = parse_date(row.get(col_date, ""), date_formats) if col_date else None
+                    order_id = row.get(col_order, "").strip() if col_order else None
+                    category = row.get(col_category, "").strip() if col_category else None
 
-                if not item_name and price is None:
-                    continue
+                    if not item_name and price is None:
+                        continue
 
-                # Duplicate check
-                if order_id and is_duplicate_by_order(cursor, source, order_id):
-                    stats["skipped"] += 1
-                    continue
-                elif not order_id and item_name and is_duplicate_by_composite(cursor, source, item_name, purchase_date, price):
-                    stats["skipped"] += 1
-                    continue
+                    # Duplicate check
+                    if order_id and is_duplicate_by_order(cursor, source, order_id):
+                        stats["skipped"] += 1
+                        continue
+                    elif not order_id and item_name and is_duplicate_by_composite(cursor, source, item_name, purchase_date, price):
+                        stats["skipped"] += 1
+                        continue
 
-                raw_data = ",".join(f"{k}={v}" for k, v in row.items())
+                    raw_data = ",".join(f"{k}={v}" for k, v in row.items())
 
-                cursor.execute(
-                    """INSERT INTO purchase_history
-                       (source, item_name, price, currency, purchase_date, order_id, category, raw_data)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (source, item_name, price, currency, purchase_date, order_id, category, raw_data),
-                )
-                stats["imported"] += 1
-            except Exception as e:
-                print(f"Warning: Skipping row: {e}")
-                stats["errors"] += 1
+                    cursor.execute(
+                        """INSERT INTO purchase_history
+                           (source, item_name, price, currency, purchase_date, order_id, category, raw_data)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (source, item_name, price, currency, purchase_date, order_id, category, raw_data),
+                    )
+                    stats["imported"] += 1
+                except Exception as e:
+                    print(f"Warning: Skipping row {row_num}: {e}")
+                    stats["errors"] += 1
 
-        conn.commit()
-        conn.close()
+            conn.commit()
+        finally:
+            conn.close()
 
     return stats
 

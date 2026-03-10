@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+
+      - name: Validate schema
+        run: |
+          python -c "
+          import sqlite3
+          conn = sqlite3.connect(':memory:')
+          with open('schema/init.sql') as f:
+              conn.executescript(f.read())
+          with open('schema/migrate_v0.2.sql') as f:
+              conn.executescript(f.read())
+          tables = conn.execute(\"SELECT name FROM sqlite_master WHERE type='table'\").fetchall()
+          print('Tables:', [t[0] for t in tables])
+          conn.close()
+          "
+
+      - name: Validate Python syntax
+        run: |
+          python -m py_compile scripts/import_amazon.py
+          python -m py_compile scripts/import_rakuten.py
+          python -m py_compile scripts/import_csv_generic.py
+          python -m py_compile scripts/import_ec_plugins.py
+          python -m py_compile scripts/process_video.py
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check scripts/ tests/ --select E,F,W --ignore E501

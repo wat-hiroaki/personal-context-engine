@@ -79,7 +79,7 @@
         "item_name": ["Lineitem name", "Name"],
         "price": ["Lineitem price", "Total", "Subtotal"],
         "purchase_date": ["Created at", "Paid at"],
-        "order_id": ["Name", "Order"],
+        "order_id": ["Order", "Order Number"],
         "quantity": ["Lineitem quantity"],
         "category": []
       },

@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS possessions (
 
 CREATE TABLE IF NOT EXISTS purchase_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    source TEXT NOT NULL CHECK(source IN ('amazon', 'rakuten', 'credit_card', 'receipt', 'manual')),
+    source TEXT NOT NULL CHECK(source IN ('amazon', 'rakuten', 'ebay', 'walmart', 'shopify', 'credit_card', 'receipt', 'manual')),
     item_name TEXT,
     price REAL,
     currency TEXT NOT NULL DEFAULT 'JPY',
@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS purchase_history (
     category TEXT,
     possession_id INTEGER,
     raw_data TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (possession_id) REFERENCES possessions(id)
 );
 

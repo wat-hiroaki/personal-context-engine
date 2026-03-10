@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS receipt_scans (
 CREATE TABLE IF NOT EXISTS receipt_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     receipt_id INTEGER NOT NULL,
-    item_name TEXT,
+    item_name TEXT NOT NULL,
     price REAL,
     quantity INTEGER DEFAULT 1,
     purchase_history_id INTEGER,
@@ -38,17 +38,6 @@ CREATE TABLE IF NOT EXISTS video_sessions (
     items_confirmed INTEGER DEFAULT 0,
     processed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
--- Add receipt source to purchase_history CHECK constraint
--- SQLite doesn't support ALTER CHECK, so we add via trigger
-CREATE TRIGGER IF NOT EXISTS check_purchase_source
-BEFORE INSERT ON purchase_history
-BEGIN
-    SELECT CASE
-        WHEN NEW.source NOT IN ('amazon', 'rakuten', 'ebay', 'walmart', 'shopify', 'credit_card', 'receipt', 'manual')
-        THEN RAISE(ABORT, 'Invalid source value')
-    END;
-END;
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_receipt_scans_date ON receipt_scans(receipt_date);

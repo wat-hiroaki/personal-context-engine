@@ -117,6 +117,7 @@ def import_amazon_csv(csv_path: str, db_path: str) -> dict:
 
     encoding = detect_encoding(csv_path)
     conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
     cursor = conn.cursor()
 
     with open(csv_path, "r", encoding=encoding) as f:
@@ -134,36 +135,42 @@ def import_amazon_csv(csv_path: str, db_path: str) -> dict:
             stats["errors"] = 1
             return stats
 
+        # Detect currency based on column mapping language
+        is_jp = any(k in AMAZON_COLUMNS for k in col_map.keys())
+        currency = "JPY" if is_jp else "USD"
+
         # Reverse map: semantic name -> csv header
         rev_map: dict[str, str] = {v: k for k, v in col_map.items()}
 
-        for row in reader:
-            try:
-                order_id = row.get(rev_map.get("order_id", ""), "").strip()
-                if order_id and is_duplicate(cursor, order_id):
-                    stats["skipped"] += 1
-                    continue
+        try:
+            for row_num, row in enumerate(reader, start=2):  # start=2 because row 1 is header
+                try:
+                    order_id = row.get(rev_map.get("order_id", ""), "").strip()
+                    if order_id and is_duplicate(cursor, order_id):
+                        stats["skipped"] += 1
+                        continue
 
-                item_name = row.get(rev_map.get("item_name", ""), "").strip()
-                price_key = rev_map.get("price") or rev_map.get("unit_price", "")
-                price = parse_price(row.get(price_key, ""))
-                purchase_date = parse_date(row.get(rev_map.get("purchase_date", ""), ""))
+                    item_name = row.get(rev_map.get("item_name", ""), "").strip()
+                    price_key = rev_map.get("price") or rev_map.get("unit_price", "")
+                    price = parse_price(row.get(price_key, ""))
+                    purchase_date = parse_date(row.get(rev_map.get("purchase_date", ""), ""))
 
-                raw_data = ",".join(f"{k}={v}" for k, v in row.items())
+                    raw_data = ",".join(f"{k}={v}" for k, v in row.items())
 
-                cursor.execute(
-                    """INSERT INTO purchase_history
-                       (source, item_name, price, currency, purchase_date, order_id, raw_data)
-                       VALUES ('amazon', ?, ?, 'JPY', ?, ?, ?)""",
-                    (item_name, price, purchase_date, order_id, raw_data),
-                )
-                stats["imported"] += 1
-            except Exception as e:
-                print(f"Warning: Skipping row due to error: {e}")
-                stats["errors"] += 1
+                    cursor.execute(
+                        """INSERT INTO purchase_history
+                           (source, item_name, price, currency, purchase_date, order_id, raw_data)
+                           VALUES ('amazon', ?, ?, ?, ?, ?, ?)""",
+                        (item_name, price, currency, purchase_date, order_id, raw_data),
+                    )
+                    stats["imported"] += 1
+                except Exception as e:
+                    print(f"Warning: Skipping row {row_num}: {e}")
+                    stats["errors"] += 1
 
-    conn.commit()
-    conn.close()
+            conn.commit()
+        finally:
+            conn.close()
     return stats
 
 

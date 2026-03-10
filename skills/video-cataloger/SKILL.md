@@ -1,3 +1,15 @@
+---
+name: video-cataloger
+description: Catalog possessions from video using ffmpeg frame extraction and Whisper transcription
+version: 0.2.0
+triggers:
+  - pattern: "(video|動画|catalog|カタログ|写真|photo)"
+tools:
+  - python3
+  - ffmpeg
+  - sqlite3
+---
+
 # Video Cataloger
 
 動画または写真から所有物を識別し、データベースに一括登録するスキル。

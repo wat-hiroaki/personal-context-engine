@@ -1,3 +1,15 @@
+---
+name: purchase-importer
+description: Import purchase history from EC sites (Amazon, eBay, Walmart, Rakuten, Shopify) and credit card CSVs
+version: 0.2.0
+triggers:
+  - pattern: "(import|インポート|取り込|CSV|csv)"
+  - pattern: "(Amazon|Rakuten|eBay|Walmart|楽天|クレカ|credit card)"
+tools:
+  - python3
+  - sqlite3
+---
+
 # Purchase Importer
 
 ECサイトやクレジットカード明細のCSVを読み取り、purchase_historyにインポートするスキル。

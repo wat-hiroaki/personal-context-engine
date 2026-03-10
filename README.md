@@ -1,10 +1,12 @@
 # Personal Context Engine
 
-**AIに自分の全てを渡すための個人データ基盤**
+**Give AI everything about you. A local-first personal data platform.**
 
-Personal Context Engine (PCE) is an open-source data platform that structures your personal life data so AI agents can access and analyze it across domains.
+Personal Context Engine (PCE) is an open-source data platform that structures your personal life data — possessions, purchases, receipts, consumables — so AI agents can access and analyze it across domains.
 
 AI is already powerful enough. The problem is that AI doesn't know *you*. PCE bridges this gap.
+
+> **Design philosophy**: Your data stays on your machine. PCE uses SQLite (a single file) with zero cloud dependencies. For remote access, use [Tailscale](https://tailscale.com/) or similar mesh VPN to securely reach your local machine from anywhere.
 
 ---
 
@@ -12,7 +14,7 @@ AI is already powerful enough. The problem is that AI doesn't know *you*. PCE br
 
 | Skill | Description | Status |
 |-------|-------------|--------|
-| **possession-manager** | Item registration, search, consumable tracking & replenishment alerts | v0.1 |
+| **possession-manager** | Item registration, search, consumable tracking & replenishment alerts | v0.2 |
 | **purchase-importer** | Plugin-based CSV import (Amazon, eBay, Walmart, Rakuten, Shopify, credit cards) | v0.2 |
 | **receipt-scanner** | Receipt OCR with Tesseract (Japanese + English, local processing) | v0.2 |
 | **video-cataloger** | Catalog items from video via ffmpeg + Whisper + vision AI | v0.2 |
@@ -22,7 +24,7 @@ AI is already powerful enough. The problem is that AI doesn't know *you*. PCE br
 
 ### Prerequisites
 
-- [OpenClaw](https://openclaw.dev) installed and running
+- [OpenClaw](https://openclaw.ai) installed and running
 - Python 3.10+
 - SQLite 3 (usually pre-installed)
 
@@ -30,16 +32,22 @@ AI is already powerful enough. The problem is that AI doesn't know *you*. PCE br
 
 | Dependency | Required For | Install |
 |-----------|-------------|---------|
-| ffmpeg | video-cataloger | [ffmpeg.org](https://ffmpeg.org/download.html) |
 | Tesseract OCR | receipt-scanner | `brew install tesseract tesseract-lang` / `apt install tesseract-ocr` |
-| openai-whisper | video audio transcription | `pip install openai-whisper` |
+| ffmpeg | video-cataloger | [ffmpeg.org](https://ffmpeg.org/download.html) |
+| openai-whisper | video audio transcription | `pip install -r requirements-video.txt` (includes PyTorch, ~2GB) |
 
 ### Installation
 
 ```bash
 git clone https://github.com/wat-hiroaki/personal-context-engine.git
 cd personal-context-engine
-pip install -r requirements.txt   # Optional: for OCR & video features
+
+# Core + receipt OCR dependencies
+pip install -r requirements.txt
+
+# Video cataloger (optional, large install)
+# pip install -r requirements-video.txt
+
 chmod +x setup.sh
 ./setup.sh
 ```
@@ -47,6 +55,12 @@ chmod +x setup.sh
 ### Verify
 
 Tell OpenClaw:
+
+```
+Register my protein powder. SAVAS whey, bought on Amazon for 2980 yen.
+```
+
+Or in Japanese:
 
 ```
 プロテインを登録して。SAVASのホエイ、Amazonで2980円で買った
@@ -76,21 +90,19 @@ Tell OpenClaw:
           └──────────────────────────┘
 ```
 
-All data stays on your local machine. No data is sent to external servers.
-
 ## Usage
 
 ### Import Purchase History (CSV)
 
 ```bash
 # Auto-detect EC site format
-python3 ~/.openclaw/workspace/scripts/import_ec_plugins.py orders.csv
+python3 scripts/import_ec_plugins.py orders.csv
 
 # Specify format
-python3 ~/.openclaw/workspace/scripts/import_ec_plugins.py orders.csv --format amazon_us
+python3 scripts/import_ec_plugins.py orders.csv --format amazon_us
 
 # List all supported formats
-python3 ~/.openclaw/workspace/scripts/import_ec_plugins.py --list-formats
+python3 scripts/import_ec_plugins.py --list-formats
 ```
 
 **Supported formats**: Amazon (JP/US), Rakuten, eBay, Walmart, Shopify, generic credit card statements.
@@ -101,13 +113,10 @@ Add your own format by editing `config/ec_formats.json` — no code changes need
 
 ```bash
 # Japanese + English (default)
-python3 ~/.openclaw/workspace/scripts/import_receipt.py receipt.jpg
+python3 scripts/import_receipt.py receipt.jpg
 
 # English only
-python3 ~/.openclaw/workspace/scripts/import_receipt.py receipt.jpg --lang en
-
-# Japanese only
-python3 ~/.openclaw/workspace/scripts/import_receipt.py receipt.jpg --lang ja
+python3 scripts/import_receipt.py receipt.jpg --lang en
 ```
 
 Uses Tesseract OCR locally — no API calls, no data sent externally.
@@ -116,49 +125,48 @@ Uses Tesseract OCR locally — no API calls, no data sent externally.
 
 ```bash
 # Process video (extract frames + transcribe audio)
-python3 ~/.openclaw/workspace/scripts/process_video.py room_tour.mp4
+python3 scripts/process_video.py room_tour.mp4
 
 # Custom settings
-python3 ~/.openclaw/workspace/scripts/process_video.py room_tour.mp4 --interval 3 --whisper-model medium
-
-# Clean up frames after done
-python3 ~/.openclaw/workspace/scripts/process_video.py --cleanup /tmp/pce_video_xxx/frames
+python3 scripts/process_video.py room_tour.mp4 --interval 3 --whisper-model medium
 ```
 
 ### Natural Language (via OpenClaw)
 
 ```
-「キッチンにあるもの一覧」
-「プロテイン開けた」
-「そろそろなくなるものある？」
-「今月の支出レポート見せて」
-「来週買うべきものリスト」
+"List everything in the kitchen"
+"I opened the protein powder"
+"What's running low?"
 "Show me this month's spending by category"
+"What should I buy this week?"
 ```
 
 ## Directory Structure
 
 ```
-~/.openclaw/workspace/
-├── skills/
-│   ├── possession-manager/SKILL.md
-│   ├── purchase-importer/SKILL.md
-│   ├── receipt-scanner/SKILL.md
-│   ├── video-cataloger/SKILL.md
-│   └── life-dashboard/SKILL.md
-├── scripts/
-│   ├── import_ec_plugins.py      # Plugin-based EC importer
-│   ├── import_amazon.py          # Amazon CSV (legacy)
-│   ├── import_rakuten.py         # Rakuten CSV (legacy)
-│   ├── import_csv_generic.py     # Generic CSV (legacy)
-│   ├── import_receipt.py         # Receipt OCR
-│   ├── process_video.py          # Video frame extraction + Whisper
-│   └── process_video.sh          # Shell wrapper for ffmpeg
-├── data/
-│   └── personal.db
-└── config/
-    ├── pce.json                  # Main configuration
-    └── ec_formats.json           # EC site column mappings
+personal-context-engine/
+├── skills/                     # OpenClaw skill definitions
+│   ├── possession-manager/
+│   ├── purchase-importer/
+│   ├── receipt-scanner/
+│   ├── video-cataloger/
+│   └── life-dashboard/
+├── scripts/                    # Python scripts
+│   ├── import_ec_plugins.py    # Plugin-based EC importer
+│   ├── import_receipt.py       # Receipt OCR
+│   ├── process_video.py        # Video frame extraction + Whisper
+│   ├── import_amazon.py        # Amazon CSV (legacy)
+│   ├── import_rakuten.py       # Rakuten CSV (legacy)
+│   └── import_csv_generic.py   # Generic CSV (legacy)
+├── schema/                     # SQLite schema & migrations
+├── config/                     # Configuration files
+│   ├── pce.json                # Main configuration
+│   └── ec_formats.json         # EC site column mappings (extensible)
+├── tests/                      # pytest test suite
+├── .github/workflows/ci.yml    # GitHub Actions CI
+├── setup.sh                    # Installation script
+├── requirements.txt            # Python deps (OCR)
+└── requirements-video.txt      # Python deps (video, includes PyTorch)
 ```
 
 ## Database Schema
@@ -172,58 +180,49 @@ python3 ~/.openclaw/workspace/scripts/process_video.py --cleanup /tmp/pce_video_
 | `receipt_items` | Individual items extracted from receipts |
 | `video_sessions` | Video processing session metadata |
 
+## Privacy & Security
+
+PCE is designed with a **local-first** architecture:
+
+- **Storage**: All data in a single SQLite file on your machine. No cloud database, no sync service.
+- **Receipt OCR**: Tesseract runs 100% locally. No images are sent to external APIs.
+- **Video frames**: Automatically deleted after analysis for privacy protection.
+- **Database permissions**: Set to `chmod 600` (owner-only).
+- **Backup**: Copy `personal.db` — that's it.
+
+### What does go external
+
+When you use PCE through OpenClaw, your **natural language queries** (not the raw database) are sent to the LLM provider configured in OpenClaw (Claude, GPT, etc.). This is standard OpenClaw behavior, not specific to PCE. The database itself never leaves your machine.
+
+### Remote Access
+
+For accessing your data from other devices (e.g., checking your shopping list on your phone), we recommend [Tailscale](https://tailscale.com/) or a similar mesh VPN to securely connect to your local machine. This preserves the local-first design while giving you access from anywhere on your private network.
+
 ## Roadmap
 
 | Phase | Content | Status |
 |-------|---------|--------|
 | v0.1 | DB schema + possession-manager + basic CSV import | Done |
-| v0.2 | Plugin EC importer + receipt OCR + video-cataloger + Whisper | Current |
-| v0.3 | life-dashboard + heartbeat automation | Current |
-| v1.0 | Documentation + setup.sh + public release | Planned |
-| v1.x+ | MCP server / EC auto-order / semantic search / i18n | Future |
+| v0.2 | Plugin EC importer + receipt OCR + video-cataloger + Whisper | Done |
+| v0.3 | life-dashboard + heartbeat automation | Done |
+| v1.0 | Tests, CI, documentation, public release | Current |
+| v1.x+ | MCP server / EC auto-order / semantic search | Future |
 
-## Privacy & Security
+## Development
 
-- **Local-first**: All data stored in SQLite on your machine — no cloud sync
-- **No external API for OCR**: Tesseract runs locally
-- **Video frames auto-deleted**: Extracted images removed after analysis
-- **Database permissions**: `chmod 600` (owner-only access)
-- **Backup**: Just copy `personal.db`
+```bash
+# Run tests
+pip install pytest
+pytest tests/ -v
 
-## Extending
-
-### Add a New EC Format
-
-Edit `config/ec_formats.json`:
-
-```json
-{
-  "my_store": {
-    "name": "My Store",
-    "source_key": "my_store",
-    "columns": {
-      "item_name": ["Product", "Name"],
-      "price": ["Price", "Total"],
-      "purchase_date": ["Date"],
-      "order_id": ["Order #"]
-    },
-    "date_formats": ["%Y-%m-%d"]
-  }
-}
+# Lint
+pip install ruff
+ruff check scripts/ tests/
 ```
-
-### Add a New Skill
-
-Create `skills/my-skill/SKILL.md` following the existing format.
 
 ## Contributing
 
-Contributions welcome! Please:
-
-- Follow existing SKILL.md format for new skills
-- Provide migration scripts for schema changes
-- Document any privacy-impacting changes
-- Write PR descriptions in Japanese or English
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 

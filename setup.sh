@@ -92,16 +92,26 @@ else
     echo "    Windows: https://github.com/UB-Mannheim/tesseract/wiki"
 fi
 
-# Python packages
+# Python packages (use correct import names)
 echo ""
-echo "  Python packages (install with: pip install -r requirements.txt):"
-for pkg in pytesseract Pillow opencv-python-headless openai-whisper; do
-    if python3 -c "import ${pkg%%[->]*}" 2>/dev/null; then
+echo "  Python packages:"
+declare -A PKG_IMPORTS=(
+    ["pytesseract"]="pytesseract"
+    ["Pillow"]="PIL"
+    ["opencv-python-headless"]="cv2"
+    ["openai-whisper"]="whisper"
+    ["chardet"]="chardet"
+)
+for pkg in pytesseract Pillow opencv-python-headless openai-whisper chardet; do
+    import_name="${PKG_IMPORTS[$pkg]}"
+    if python3 -c "import ${import_name}" 2>/dev/null; then
         echo "    ${pkg}: OK"
     else
         echo "    ${pkg}: not installed (optional)"
     fi
 done 2>/dev/null || echo "    (Could not check Python packages)"
+echo "  Install OCR deps:   pip install -r requirements.txt"
+echo "  Install video deps: pip install -r requirements-video.txt"
 
 echo ""
 echo "============================================"

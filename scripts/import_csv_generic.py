@@ -17,6 +17,7 @@ import sys
 import csv
 import sqlite3
 import os
+import re
 import argparse
 from pathlib import Path
 from datetime import datetime
@@ -49,20 +50,13 @@ def detect_encoding(filepath: str) -> str:
 def parse_price(price_str: str) -> float | None:
     if not price_str:
         return None
-    cleaned = (
-        price_str.replace("¥", "")
-        .replace(",", "")
-        .replace("￥", "")
-        .replace("円", "")
-        .replace("-", "")
-        .strip()
-    )
+    # Detect if the value is negative (has minus sign or parentheses)
+    is_negative = bool(re.search(r"[-\(]", price_str))
+    # Remove everything except digits and decimal point
+    cleaned = re.sub(r"[^\d.]", "", price_str)
     try:
         val = float(cleaned)
-        # Handle negative amounts (returns/refunds shown as negative in original)
-        if "-" in price_str and val > 0:
-            val = -val
-        return val
+        return -val if is_negative else val
     except ValueError:
         return None
 
@@ -114,6 +108,7 @@ def import_generic_csv(csv_path: str, db_path: str, source: str) -> dict:
 
     encoding = detect_encoding(csv_path)
     conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
     cursor = conn.cursor()
 
     with open(csv_path, "r", encoding=encoding) as f:
@@ -133,45 +128,47 @@ def import_generic_csv(csv_path: str, db_path: str, source: str) -> dict:
             print(f"Detected mapping: {mapping}")
             print("Will import with available data.")
 
-        for row in reader:
-            try:
-                item_name = row.get(mapping.get("item_name", ""), "").strip()
-                price = parse_price(row.get(mapping.get("price", ""), ""))
-                purchase_date = parse_date(row.get(mapping.get("purchase_date", ""), ""))
-                order_id = row.get(mapping.get("order_id", ""), "").strip() or None
+        try:
+            for row_num, row in enumerate(reader, start=2):  # start=2 because row 1 is header
+                try:
+                    item_name = row.get(mapping.get("item_name", ""), "").strip()
+                    price = parse_price(row.get(mapping.get("price", ""), ""))
+                    purchase_date = parse_date(row.get(mapping.get("purchase_date", ""), ""))
+                    order_id = row.get(mapping.get("order_id", ""), "").strip() or None
 
-                # Skip empty rows
-                if not item_name and price is None:
-                    continue
+                    # Skip empty rows
+                    if not item_name and price is None:
+                        continue
 
-                # Duplicate check
-                if order_id:
-                    cursor.execute(
-                        "SELECT COUNT(*) FROM purchase_history WHERE order_id = ? AND source = ?",
-                        (order_id, source),
-                    )
-                    if cursor.fetchone()[0] > 0:
+                    # Duplicate check
+                    if order_id:
+                        cursor.execute(
+                            "SELECT COUNT(*) FROM purchase_history WHERE order_id = ? AND source = ?",
+                            (order_id, source),
+                        )
+                        if cursor.fetchone()[0] > 0:
+                            stats["skipped"] += 1
+                            continue
+                    elif item_name and is_duplicate(cursor, source, item_name, purchase_date, price):
                         stats["skipped"] += 1
                         continue
-                elif item_name and is_duplicate(cursor, source, item_name, purchase_date, price):
-                    stats["skipped"] += 1
-                    continue
 
-                raw_data = ",".join(f"{k}={v}" for k, v in row.items())
+                    raw_data = ",".join(f"{k}={v}" for k, v in row.items())
 
-                cursor.execute(
-                    """INSERT INTO purchase_history
-                       (source, item_name, price, currency, purchase_date, order_id, raw_data)
-                       VALUES (?, ?, ?, 'JPY', ?, ?, ?)""",
-                    (source, item_name, price, purchase_date, order_id, raw_data),
-                )
-                stats["imported"] += 1
-            except Exception as e:
-                print(f"Warning: Skipping row due to error: {e}")
-                stats["errors"] += 1
+                    cursor.execute(
+                        """INSERT INTO purchase_history
+                           (source, item_name, price, currency, purchase_date, order_id, raw_data)
+                           VALUES (?, ?, ?, 'JPY', ?, ?, ?)""",
+                        (source, item_name, price, purchase_date, order_id, raw_data),
+                    )
+                    stats["imported"] += 1
+                except Exception as e:
+                    print(f"Warning: Skipping row {row_num}: {e}")
+                    stats["errors"] += 1
 
-    conn.commit()
-    conn.close()
+            conn.commit()
+        finally:
+            conn.close()
     return stats
 
 

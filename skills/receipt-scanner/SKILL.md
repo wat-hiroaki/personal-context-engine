@@ -1,3 +1,15 @@
+---
+name: receipt-scanner
+description: Extract items and prices from receipt images using local Tesseract OCR
+version: 0.2.0
+triggers:
+  - pattern: "(receipt|レシート|scan|スキャン)"
+tools:
+  - python3
+  - tesseract
+  - sqlite3
+---
+
 # Receipt Scanner
 
 レシート画像から店名・日付・商品・金額をOCRで読み取り、購入履歴に登録するスキル。

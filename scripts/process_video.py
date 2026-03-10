@@ -167,17 +167,20 @@ def save_session(
 ) -> int:
     """Save video processing session to database."""
     conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
     cursor = conn.cursor()
-    cursor.execute(
-        """INSERT INTO video_sessions
-           (video_path, frame_count, has_audio, audio_transcript, items_detected, items_confirmed)
-           VALUES (?, ?, ?, ?, 0, 0)""",
-        (os.path.abspath(video_path), frame_count, has_audio, transcript),
-    )
-    session_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    return session_id
+    try:
+        cursor.execute(
+            """INSERT INTO video_sessions
+               (video_path, frame_count, has_audio, audio_transcript, items_detected, items_confirmed)
+               VALUES (?, ?, ?, ?, 0, 0)""",
+            (os.path.abspath(video_path), frame_count, has_audio, transcript),
+        )
+        session_id = cursor.lastrowid
+        conn.commit()
+        return session_id
+    finally:
+        conn.close()
 
 
 def process_video(
@@ -252,10 +255,8 @@ def process_video(
             result["frames_dir"] = frames_dir
             print(f"\nFrames kept at: {frames_dir}")
         else:
-            # Frames will be cleaned up, but prompts file stays for OpenClaw
-            result["frames_dir"] = frames_dir
-            print(f"\nFrames at: {frames_dir}")
-            print("(Will be auto-deleted after vision analysis)")
+            result["frames_dir"] = None
+            cleanup_frames(frames_dir)
 
     except Exception as e:
         # Clean up on error
@@ -267,12 +268,19 @@ def process_video(
 
 def cleanup_frames(frames_dir: str):
     """Delete extracted frames (privacy protection)."""
-    if frames_dir and os.path.exists(frames_dir):
-        shutil.rmtree(frames_dir, ignore_errors=True)
-        parent = os.path.dirname(frames_dir)
-        if os.path.exists(parent) and not os.listdir(parent):
-            shutil.rmtree(parent, ignore_errors=True)
-        print("Frames deleted (privacy protection).")
+    if not frames_dir or not os.path.exists(frames_dir):
+        return
+    # Safety: only delete directories that match PCE temp pattern
+    dir_name = os.path.basename(os.path.dirname(frames_dir)) if os.path.basename(frames_dir) == "frames" else os.path.basename(frames_dir)
+    if not dir_name.startswith("pce_video_"):
+        print(f"Error: Refusing to delete '{frames_dir}' — not a PCE temp directory.")
+        print("PCE temp directories start with 'pce_video_'")
+        return
+    shutil.rmtree(frames_dir, ignore_errors=True)
+    parent = os.path.dirname(frames_dir)
+    if parent and os.path.exists(parent) and os.path.basename(parent).startswith("pce_video_") and not os.listdir(parent):
+        shutil.rmtree(parent, ignore_errors=True)
+    print("Frames deleted (privacy protection).")
 
 
 def main():
@@ -298,6 +306,11 @@ def main():
 
     if not os.path.exists(args.video_path):
         print(f"Error: Video not found: {args.video_path}")
+        sys.exit(1)
+
+    # Reject URLs (ffmpeg accepts URLs which could cause unintended network requests)
+    if args.video_path.startswith(("http://", "https://", "rtsp://", "ftp://")):
+        print("Error: URL inputs are not supported. Please provide a local file path.")
         sys.exit(1)
 
     if not check_ffmpeg():
@@ -337,7 +350,7 @@ def main():
     print("Next step: OpenClaw will analyze each frame with vision AI")
     print("and present detected items for your confirmation.")
 
-    if not args.keep_frames and result["frames_dir"]:
+    if args.keep_frames and result["frames_dir"]:
         print(f"\nTo clean up frames later:")
         print(f"  python3 process_video.py --cleanup {result['frames_dir']}")
 

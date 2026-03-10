@@ -1,0 +1,9 @@
+# Personal Context Engine — Video Cataloger Dependencies
+#
+# WARNING: This installs PyTorch (~2GB). Only install if you need
+# the video-cataloger's audio transcription feature (Whisper).
+#
+# Usage: pip install -r requirements-video.txt
+
+-r requirements.txt
+openai-whisper>=20231117

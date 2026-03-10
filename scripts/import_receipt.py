@@ -22,6 +22,7 @@ import re
 import sqlite3
 import argparse
 import json
+import hashlib
 from pathlib import Path
 from datetime import datetime
 
@@ -125,7 +126,14 @@ def ocr_image(image: np.ndarray, lang: str) -> tuple[str, float]:
     data = pytesseract.image_to_data(
         image, lang=tess_lang, output_type=pytesseract.Output.DICT
     )
-    confidences = [int(c) for c in data["conf"] if int(c) > 0]
+    confidences = []
+    for c in data["conf"]:
+        try:
+            val = int(c)
+            if val > 0:
+                confidences.append(val)
+        except (ValueError, TypeError):
+            continue
     avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
 
     # Get full text
@@ -240,6 +248,15 @@ def detect_currency(text: str) -> str:
     return "JPY"  # Default for ambiguous
 
 
+def compute_image_hash(image_path: str) -> str:
+    """Compute MD5 hash of image file for duplicate detection."""
+    h = hashlib.md5()
+    with open(image_path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def save_to_db(
     db_path: str,
     image_path: str,
@@ -254,35 +271,50 @@ def save_to_db(
 ) -> int:
     """Save receipt scan and items to database."""
     conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
     cursor = conn.cursor()
 
-    # Insert receipt scan
+    # Check for duplicate scan
+    image_hash = compute_image_hash(image_path)
     cursor.execute(
-        """INSERT INTO receipt_scans
-           (image_path, store_name, total_amount, currency, receipt_date, ocr_raw_text, ocr_confidence, language)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (image_path, store_name, total, currency, receipt_date, raw_text, confidence, lang),
+        "SELECT id FROM receipt_scans WHERE image_path = ? OR image_path LIKE ?",
+        (os.path.abspath(image_path), f"%{image_hash}%"),
     )
-    receipt_id = cursor.lastrowid
+    existing = cursor.fetchone()
+    if existing:
+        print(f"Warning: This receipt appears to already be scanned (id={existing[0]}). Skipping.")
+        conn.close()
+        return -1
 
-    # Insert line items
-    for item in items:
+    try:
+        # Insert receipt scan
         cursor.execute(
-            """INSERT INTO receipt_items (receipt_id, item_name, price, quantity)
-               VALUES (?, ?, ?, 1)""",
-            (receipt_id, item["name"], item["price"]),
+            """INSERT INTO receipt_scans
+               (image_path, store_name, total_amount, currency, receipt_date, ocr_raw_text, ocr_confidence, language)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (f"{os.path.abspath(image_path)}|{image_hash}", store_name, total, currency, receipt_date, raw_text, confidence, lang),
         )
+        receipt_id = cursor.lastrowid
 
-        # Also add to purchase_history
-        cursor.execute(
-            """INSERT INTO purchase_history
-               (source, item_name, price, currency, purchase_date, raw_data)
-               VALUES ('receipt', ?, ?, ?, ?, ?)""",
-            (item["name"], item["price"], currency, receipt_date, f"receipt_id={receipt_id},store={store_name}"),
-        )
+        # Insert line items
+        for item in items:
+            cursor.execute(
+                """INSERT INTO receipt_items (receipt_id, item_name, price, quantity)
+                   VALUES (?, ?, ?, 1)""",
+                (receipt_id, item["name"], item["price"]),
+            )
 
-    conn.commit()
-    conn.close()
+            # Also add to purchase_history
+            cursor.execute(
+                """INSERT INTO purchase_history
+                   (source, item_name, price, currency, purchase_date, raw_data)
+                   VALUES ('receipt', ?, ?, ?, ?, ?)""",
+                (item["name"], item["price"], currency, receipt_date, f"receipt_id={receipt_id},store={store_name}"),
+            )
+
+        conn.commit()
+    finally:
+        conn.close()
     return receipt_id
 
 
