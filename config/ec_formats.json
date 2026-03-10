@@ -1,0 +1,114 @@
+{
+  "$schema": "EC site CSV column mapping definitions",
+  "formats": {
+    "amazon_jp": {
+      "name": "Amazon.co.jp",
+      "source_key": "amazon",
+      "encoding_hint": "shift_jis",
+      "columns": {
+        "item_name": ["商品名", "Title"],
+        "price": ["価格", "合計", "Item Total", "Purchase Price Per Unit"],
+        "purchase_date": ["注文日", "Order Date"],
+        "order_id": ["注文番号", "Order ID"],
+        "quantity": ["数量", "Quantity"],
+        "category": ["カテゴリ", "Category"]
+      },
+      "date_formats": ["%Y/%m/%d", "%Y-%m-%d", "%Y年%m月%d日"]
+    },
+    "amazon_us": {
+      "name": "Amazon.com",
+      "source_key": "amazon",
+      "encoding_hint": "utf-8",
+      "columns": {
+        "item_name": ["Title", "Product Name"],
+        "price": ["Item Total", "Purchase Price Per Unit", "Total Owed"],
+        "purchase_date": ["Order Date", "Ship Date"],
+        "order_id": ["Order ID"],
+        "quantity": ["Quantity"],
+        "category": ["Category"]
+      },
+      "date_formats": ["%m/%d/%Y", "%Y-%m-%d", "%m/%d/%y"]
+    },
+    "rakuten": {
+      "name": "Rakuten",
+      "source_key": "rakuten",
+      "encoding_hint": "shift_jis",
+      "columns": {
+        "item_name": ["商品名", "商品名称"],
+        "price": ["商品価格", "金額"],
+        "purchase_date": ["注文日時", "注文日"],
+        "order_id": ["注文番号", "受注番号"],
+        "quantity": ["個数", "数量"],
+        "category": []
+      },
+      "date_formats": ["%Y/%m/%d %H:%M:%S", "%Y/%m/%d %H:%M", "%Y/%m/%d"]
+    },
+    "ebay": {
+      "name": "eBay",
+      "source_key": "ebay",
+      "encoding_hint": "utf-8",
+      "columns": {
+        "item_name": ["Item title", "Item Title", "Title"],
+        "price": ["Total price", "Item price", "Sale price", "Total Price"],
+        "purchase_date": ["Sale date", "Date", "Order date"],
+        "order_id": ["Order number", "Order Number", "Transaction ID"],
+        "quantity": ["Quantity"],
+        "category": ["Category"]
+      },
+      "date_formats": ["%b-%d-%y", "%b %d, %Y", "%m/%d/%Y", "%Y-%m-%d"]
+    },
+    "walmart": {
+      "name": "Walmart",
+      "source_key": "walmart",
+      "encoding_hint": "utf-8",
+      "columns": {
+        "item_name": ["Product", "Item Description", "Product Name"],
+        "price": ["Price", "Amount", "Item Total"],
+        "purchase_date": ["Date", "Order Date", "Purchase Date"],
+        "order_id": ["Order #", "Order Number", "Order ID"],
+        "quantity": ["Qty", "Quantity"],
+        "category": ["Category", "Department"]
+      },
+      "date_formats": ["%m/%d/%Y", "%m/%d/%y", "%Y-%m-%d"]
+    },
+    "shopify": {
+      "name": "Shopify Order Export",
+      "source_key": "shopify",
+      "encoding_hint": "utf-8",
+      "columns": {
+        "item_name": ["Lineitem name", "Name"],
+        "price": ["Lineitem price", "Total", "Subtotal"],
+        "purchase_date": ["Created at", "Paid at"],
+        "order_id": ["Name", "Order"],
+        "quantity": ["Lineitem quantity"],
+        "category": []
+      },
+      "date_formats": ["%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"]
+    },
+    "generic_credit_card": {
+      "name": "Generic Credit Card Statement",
+      "source_key": "credit_card",
+      "encoding_hint": null,
+      "columns": {
+        "item_name": ["商品名", "利用先", "摘要", "内容", "明細", "店名", "Description", "Merchant", "Payee"],
+        "price": ["金額", "利用金額", "支払金額", "請求金額", "Amount", "Price", "Debit"],
+        "purchase_date": ["日付", "利用日", "利用年月日", "取引日", "Date", "Transaction Date", "Post Date"],
+        "order_id": ["管理番号", "Reference", "Reference Number"],
+        "quantity": [],
+        "category": ["カテゴリ", "Category", "Type"]
+      },
+      "date_formats": ["%Y/%m/%d", "%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%Y年%m月%d日"]
+    }
+  },
+  "currency_symbols": {
+    "¥": "JPY",
+    "￥": "JPY",
+    "$": "USD",
+    "€": "EUR",
+    "£": "GBP",
+    "₩": "KRW",
+    "A$": "AUD",
+    "C$": "CAD"
+  },
+  "encoding_order": ["utf-8-sig", "utf-8", "shift_jis", "cp932", "iso-8859-1", "latin-1"]
+}

@@ -1,0 +1,19 @@
+# Personal Context Engine — Python Dependencies
+#
+# Core (required)
+# ──────────────────────
+# sqlite3, csv, json, argparse — all stdlib, no install needed
+
+# Receipt OCR
+# ──────────────────────
+pytesseract>=0.3.10
+Pillow>=10.0.0
+opencv-python-headless>=4.8.0
+
+# Video Cataloger
+# ──────────────────────
+openai-whisper>=20231117
+
+# Optional: better encoding detection
+# ──────────────────────
+chardet>=5.0.0

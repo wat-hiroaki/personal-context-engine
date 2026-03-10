@@ -1,6 +1,7 @@
 # Purchase Importer
 
 ECサイトやクレジットカード明細のCSVを読み取り、purchase_historyにインポートするスキル。
+プラグイン方式で任意のECサイトに対応。
 
 ## Trigger Phrases
 
@@ -8,6 +9,8 @@ ECサイトやクレジットカード明細のCSVを読み取り、purchase_his
 - 「楽天の注文CSVを取り込んで」
 - 「クレカ明細を登録して」
 - 「CSVから購入履歴を読み込んで」
+- "Import my eBay purchase history"
+- "Load Walmart CSV"
 
 ## Database
 
@@ -15,34 +18,68 @@ SQLite database at `~/.openclaw/workspace/data/personal.db`
 
 ## Supported Formats
 
-| ソース | フォーマット | 取得方法 |
-|--------|-------------|---------|
-| Amazon.co.jp | CSV（注文履歴レポート） | アカウント → 注文履歴 → レポート |
-| 楽天市場 | CSV（購入履歴） | my Rakuten → 購入履歴 → CSVダウンロード |
-| クレジットカード | CSV（各社明細） | カード会社Web明細 → CSVダウンロード |
+Plugin definitions in `config/ec_formats.json`:
+
+| Format Key | Name | Source |
+|-----------|------|--------|
+| `amazon_jp` | Amazon.co.jp | Japanese Amazon |
+| `amazon_us` | Amazon.com | US Amazon |
+| `rakuten` | Rakuten | 楽天市場 |
+| `ebay` | eBay | eBay |
+| `walmart` | Walmart | Walmart |
+| `shopify` | Shopify Order Export | Shopify stores |
+| `generic_credit_card` | Generic Credit Card | Any credit card CSV |
+
+### Adding New Formats
+
+Edit `config/ec_formats.json` and add a new entry under `formats`:
+
+```json
+{
+  "my_store": {
+    "name": "My Store",
+    "source_key": "my_store",
+    "encoding_hint": "utf-8",
+    "columns": {
+      "item_name": ["Product Name", "Item"],
+      "price": ["Price", "Amount"],
+      "purchase_date": ["Date", "Order Date"],
+      "order_id": ["Order #"],
+      "quantity": ["Qty"],
+      "category": ["Category"]
+    },
+    "date_formats": ["%Y-%m-%d", "%m/%d/%Y"]
+  }
+}
+```
+
+No code changes required — the plugin importer auto-detects columns.
 
 ## Import Flow
 
 1. ユーザーがCSVファイルパスを伝える
 2. ファイルの存在を確認
-3. ソースを自動判定（ファイル名やヘッダーから推測、不明ならユーザーに確認）
-4. 対応するPythonスクリプトを実行:
-   - Amazon: `~/.openclaw/workspace/scripts/import_amazon.py`
-   - 楽天: `~/.openclaw/workspace/scripts/import_rakuten.py`
-   - その他: `~/.openclaw/workspace/scripts/import_csv_generic.py`
+3. フォーマットを自動判定（ヘッダーのカラム名マッチング）
+   - 自動判定失敗時: ユーザーに確認 or `generic_credit_card` にフォールバック
+4. `import_ec_plugins.py` を実行
 5. インポート結果を報告
 
 ## Script Execution
 
 ```bash
-# Amazon
-python3 ~/.openclaw/workspace/scripts/import_amazon.py <csv_path> <db_path>
+# Auto-detect format
+python3 ~/.openclaw/workspace/scripts/import_ec_plugins.py <csv_path>
 
-# Rakuten
-python3 ~/.openclaw/workspace/scripts/import_rakuten.py <csv_path> <db_path>
+# Specify format explicitly
+python3 ~/.openclaw/workspace/scripts/import_ec_plugins.py <csv_path> --format amazon_jp
 
-# Generic CSV
-python3 ~/.openclaw/workspace/scripts/import_csv_generic.py <csv_path> <db_path> --source <source_name>
+# List available formats
+python3 ~/.openclaw/workspace/scripts/import_ec_plugins.py --list-formats
+
+# Legacy scripts (still available for backward compatibility)
+python3 ~/.openclaw/workspace/scripts/import_amazon.py <csv_path>
+python3 ~/.openclaw/workspace/scripts/import_rakuten.py <csv_path>
+python3 ~/.openclaw/workspace/scripts/import_csv_generic.py <csv_path> --source credit_card
 ```
 
 ## Duplicate Prevention
@@ -52,29 +89,25 @@ python3 ~/.openclaw/workspace/scripts/import_csv_generic.py <csv_path> <db_path>
 
 ## Character Encoding
 
-日本語CSVの文字コードは以下の順序で自動判定:
-`utf-8-sig` → `utf-8` → `shift_jis` → `cp932`
+自動判定順序: `utf-8-sig` → `utf-8` → `shift_jis` → `cp932` → `iso-8859-1` → `latin-1`
 
-判定失敗時はユーザーにエンコーディングを確認する。
+`chardet` がインストールされている場合はフォールバックとして使用。
 
-## Possession Linking
+## Multi-Currency Support
 
-インポート後、既存の possessions レコードと名前が類似するアイテムを提案:
-
-```sql
-SELECT id, name, brand FROM possessions
-WHERE name LIKE '%' || ? || '%' OR brand LIKE '%' || ? || '%';
-```
-
-ユーザーが確認したら `purchase_history.possession_id` を更新する。
+通貨は以下の記号から自動判定:
+- ¥ / ￥ → JPY
+- $ → USD
+- € → EUR
+- £ → GBP
+- ₩ → KRW
 
 ## Output Format
 
 ```
-📦 インポート完了（Amazon）
-- 取り込み: 42件
-- スキップ（重複）: 3件
-- エラー: 0件
-- 期間: 2025-01-01 〜 2026-03-01
-- 合計金額: ¥187,320
+📦 Import complete (Amazon.co.jp)
+  Format:   amazon_jp (auto-detected)
+  Imported: 42
+  Skipped:  3 (duplicate)
+  Errors:   0
 ```

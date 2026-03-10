@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "0.2.0",
   "database": {
     "path": "~/.openclaw/workspace/data/personal.db"
   },
@@ -23,10 +23,16 @@
     "default": 30
   },
   "alert_threshold": 0.8,
-  "csv_encoding_order": ["utf-8-sig", "utf-8", "shift_jis", "cp932"],
+  "csv_encoding_order": ["utf-8-sig", "utf-8", "shift_jis", "cp932", "iso-8859-1", "latin-1"],
   "video": {
     "frame_interval_seconds": 5,
-    "max_frames": 100
+    "max_frames": 100,
+    "whisper_model": "small"
+  },
+  "receipt_ocr": {
+    "default_language": "ja+en",
+    "min_confidence_threshold": 50.0,
+    "supported_languages": ["ja", "en", "ja+en"]
   },
   "heartbeat": {
     "consumable_check": "0 9 * * *",
