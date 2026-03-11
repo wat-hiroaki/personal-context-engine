@@ -71,12 +71,20 @@ def parse_item_line(line: str, default_category: str) -> dict | None:
 
 
 def insert_items(conn: sqlite3.Connection, items: list[dict]) -> int:
-    """Insert items into the possessions table. Returns count of inserted rows."""
+    """Insert items into the possessions table. Skips duplicates by name+category. Returns count of inserted rows."""
     cursor = conn.cursor()
     today = date.today().isoformat()
     count = 0
 
     for item in items:
+        # Skip if item with same name and category already exists
+        cursor.execute(
+            "SELECT COUNT(*) FROM possessions WHERE name = ? AND category = ?",
+            (item["name"], item["category"]),
+        )
+        if cursor.fetchone()[0] > 0:
+            continue
+
         cursor.execute(
             """INSERT INTO possessions
                (name, category, brand, is_consumable, estimated_lifespan_days,
