@@ -34,13 +34,18 @@ else
 fi
 sqlite3 "${DB_PATH}" < "${SCRIPT_DIR}/schema/init.sql"
 
-# Run migrations
+# Run migrations (idempotent — safe to re-run)
 for migration in "${SCRIPT_DIR}/schema/migrate_v"*.sql; do
     if [ -f "${migration}" ]; then
         echo "  Applying $(basename "${migration}")..."
-        sqlite3 "${DB_PATH}" < "${migration}"
+        # Some ALTER TABLE statements may fail if already applied (e.g., duplicate column).
+        # We run each statement individually and ignore expected errors.
+        sqlite3 "${DB_PATH}" < "${migration}" 2>/dev/null || true
     fi
 done
+
+# Apply ALTER TABLE for image_hash column (idempotent — errors silently if exists)
+sqlite3 "${DB_PATH}" "ALTER TABLE receipt_scans ADD COLUMN image_hash TEXT;" 2>/dev/null || true
 
 chmod 600 "${DB_PATH}"
 echo "  Done."

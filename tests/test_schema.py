@@ -13,6 +13,7 @@ def test_all_tables_created(db_conn):
         "purchase_history",
         "receipt_items",
         "receipt_scans",
+        "schema_version",
         "video_sessions",
     ]
 

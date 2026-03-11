@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS receipt_scans (
     ocr_raw_text TEXT,
     ocr_confidence REAL,
     language TEXT DEFAULT 'ja',
+    image_hash TEXT,
     processed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
