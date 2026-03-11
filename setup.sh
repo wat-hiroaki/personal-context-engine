@@ -34,11 +34,13 @@ else
 fi
 sqlite3 "${DB_PATH}" < "${SCRIPT_DIR}/schema/init.sql"
 
-# Run v0.2 migration if available
-if [ -f "${SCRIPT_DIR}/schema/migrate_v0.2.sql" ]; then
-    echo "  Applying v0.2 migration..."
-    sqlite3 "${DB_PATH}" < "${SCRIPT_DIR}/schema/migrate_v0.2.sql"
-fi
+# Run migrations
+for migration in "${SCRIPT_DIR}/schema/migrate_v"*.sql; do
+    if [ -f "${migration}" ]; then
+        echo "  Applying $(basename "${migration}")..."
+        sqlite3 "${DB_PATH}" < "${migration}"
+    fi
+done
 
 chmod 600 "${DB_PATH}"
 echo "  Done."
@@ -92,24 +94,23 @@ else
     echo "    Windows: https://github.com/UB-Mannheim/tesseract/wiki"
 fi
 
-# Python packages (use correct import names)
+# Python packages
 echo ""
 echo "  Python packages:"
-declare -A PKG_IMPORTS=(
-    ["pytesseract"]="pytesseract"
-    ["Pillow"]="PIL"
-    ["opencv-python-headless"]="cv2"
-    ["openai-whisper"]="whisper"
-    ["chardet"]="chardet"
-)
-for pkg in pytesseract Pillow opencv-python-headless openai-whisper chardet; do
-    import_name="${PKG_IMPORTS[$pkg]}"
+check_python_pkg() {
+    local pkg_name="$1"
+    local import_name="$2"
     if python3 -c "import ${import_name}" 2>/dev/null; then
-        echo "    ${pkg}: OK"
+        echo "    ${pkg_name}: OK"
     else
-        echo "    ${pkg}: not installed (optional)"
+        echo "    ${pkg_name}: not installed (optional)"
     fi
-done 2>/dev/null || echo "    (Could not check Python packages)"
+}
+check_python_pkg "pytesseract" "pytesseract"
+check_python_pkg "Pillow" "PIL"
+check_python_pkg "opencv-python-headless" "cv2"
+check_python_pkg "openai-whisper" "whisper"
+check_python_pkg "chardet" "chardet"
 echo "  Install OCR deps:   pip install -r requirements.txt"
 echo "  Install video deps: pip install -r requirements-video.txt"
 

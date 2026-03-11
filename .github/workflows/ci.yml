@@ -32,22 +32,23 @@ jobs:
           python -c "
           import sqlite3
           conn = sqlite3.connect(':memory:')
-          with open('schema/init.sql') as f:
-              conn.executescript(f.read())
-          with open('schema/migrate_v0.2.sql') as f:
-              conn.executescript(f.read())
+          for sql_file in ['schema/init.sql', 'schema/migrate_v0.2.sql', 'schema/migrate_v1.0.sql']:
+              with open(sql_file, encoding='utf-8') as f:
+                  conn.executescript(f.read())
           tables = conn.execute(\"SELECT name FROM sqlite_master WHERE type='table'\").fetchall()
           print('Tables:', [t[0] for t in tables])
+          assert len(tables) >= 6, f'Expected 6+ tables, got {len(tables)}'
           conn.close()
           "
 
       - name: Validate Python syntax
         run: |
+          python -m py_compile scripts/common.py
           python -m py_compile scripts/import_amazon.py
           python -m py_compile scripts/import_rakuten.py
           python -m py_compile scripts/import_csv_generic.py
           python -m py_compile scripts/import_ec_plugins.py
-          python -m py_compile scripts/process_video.py
+          python -m py_compile scripts/bootstrap.py
 
       - name: Run tests
         run: pytest tests/ -v
@@ -60,4 +61,4 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install ruff
-      - run: ruff check scripts/ tests/ --select E,F,W --ignore E501
+      - run: ruff check scripts/ tests/ --select E,F,W --ignore E501,E402

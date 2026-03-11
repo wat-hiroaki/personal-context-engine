@@ -103,35 +103,60 @@ class TestGenericParser:
         assert "price" in mapping
 
 
-class TestEcPluginParser:
+class TestCommonParser:
+    """Tests for shared common.py parsing functions."""
+
     def test_parse_price_usd(self):
-        from import_ec_plugins import parse_price
-        amount, currency = parse_price("$29.99", {"$": "USD", "¥": "JPY"})
+        from common import parse_price_generic
+        amount, currency = parse_price_generic("$29.99", {"$": "USD", "¥": "JPY"})
         assert amount == 29.99
         assert currency == "USD"
 
     def test_parse_price_jpy(self):
-        from import_ec_plugins import parse_price
-        amount, currency = parse_price("¥2,980", {"$": "USD", "¥": "JPY"})
+        from common import parse_price_generic
+        amount, currency = parse_price_generic("¥2,980", {"$": "USD", "¥": "JPY"})
         assert amount == 2980.0
         assert currency == "JPY"
 
     def test_parse_price_yen_suffix(self):
-        from import_ec_plugins import parse_price
-        amount, currency = parse_price("1,500円", {"$": "USD", "¥": "JPY"})
+        from common import parse_price_generic
+        amount, currency = parse_price_generic("1,500円", {"$": "USD", "¥": "JPY"})
         assert amount == 1500.0
         assert currency == "JPY"
 
     def test_parse_price_negative(self):
-        from import_ec_plugins import parse_price
-        amount, currency = parse_price("-$15.00", {"$": "USD"})
+        from common import parse_price_generic
+        amount, currency = parse_price_generic("-$15.00", {"$": "USD"})
         assert amount == -15.0
         assert currency == "USD"
 
     def test_parse_price_empty(self):
-        from import_ec_plugins import parse_price
-        amount, currency = parse_price("", {})
+        from common import parse_price_generic
+        amount, currency = parse_price_generic("", {})
         assert amount is None
+
+    def test_parse_date_iso(self):
+        from common import parse_date_multi
+        assert parse_date_multi("2026-03-10", ["%Y-%m-%d"]) == "2026-03-10"
+
+    def test_parse_date_slash(self):
+        from common import parse_date_multi
+        assert parse_date_multi("2026/03/10", ["%Y/%m/%d"]) == "2026-03-10"
+
+    def test_parse_date_empty(self):
+        from common import parse_date_multi
+        assert parse_date_multi("", ["%Y-%m-%d"]) is None
+
+    def test_row_to_json(self):
+        from common import row_to_json
+        import json
+        row = {"name": "Test", "price": "100"}
+        result = json.loads(row_to_json(row))
+        assert result["name"] == "Test"
+        assert result["price"] == "100"
+
+
+class TestEcPluginParser:
 
     def test_auto_detect_amazon_jp(self):
         from import_ec_plugins import auto_detect_format, load_ec_formats

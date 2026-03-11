@@ -1,0 +1,61 @@
+[project]
+name = "personal-context-engine"
+version = "1.0.0"
+description = "Give AI everything about you. A local-first personal data platform."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "wat-hiroaki", email = "wat-hiroaki@users.noreply.github.com"},
+]
+keywords = ["ai", "personal-data", "sqlite", "local-first", "privacy"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+    "Topic :: Home Automation",
+]
+
+[project.optional-dependencies]
+ocr = [
+    "pytesseract>=0.3.10",
+    "Pillow>=10.0.0",
+    "opencv-python-headless>=4.8.0",
+]
+video = [
+    "pytesseract>=0.3.10",
+    "Pillow>=10.0.0",
+    "opencv-python-headless>=4.8.0",
+    "openai-whisper>=20231117",
+]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/wat-hiroaki/personal-context-engine"
+Repository = "https://github.com/wat-hiroaki/personal-context-engine"
+Issues = "https://github.com/wat-hiroaki/personal-context-engine/issues"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501", "E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

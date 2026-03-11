@@ -29,12 +29,16 @@ def test_purchase_history_accepts_all_sources(db_conn):
     assert count == len(valid_sources)
 
 
-def test_purchase_history_rejects_invalid_source(db_conn):
-    import pytest
-    with pytest.raises(sqlite3.IntegrityError):
-        db_conn.execute(
-            "INSERT INTO purchase_history (source, item_name) VALUES ('invalid_source', 'test')"
-        )
+def test_purchase_history_accepts_custom_source(db_conn):
+    """v1.0: source CHECK constraint removed — any source string is valid."""
+    db_conn.execute(
+        "INSERT INTO purchase_history (source, item_name) VALUES ('custom_store', 'test')"
+    )
+    db_conn.commit()
+    row = db_conn.execute(
+        "SELECT source FROM purchase_history WHERE item_name = 'test'"
+    ).fetchone()
+    assert row[0] == "custom_store"
 
 
 def test_purchase_history_has_created_at(db_conn):
@@ -52,6 +56,18 @@ def test_foreign_key_enforcement(db_conn):
         db_conn.execute(
             "INSERT INTO consumption_log (possession_id, event_type) VALUES (99999, 'opened')"
         )
+
+
+def test_receipt_scans_has_image_hash(db_conn):
+    """v1.0: receipt_scans has image_hash column for duplicate detection."""
+    db_conn.execute(
+        "INSERT INTO receipt_scans (image_path, image_hash) VALUES ('test.jpg', 'abc123')"
+    )
+    db_conn.commit()
+    row = db_conn.execute(
+        "SELECT image_hash FROM receipt_scans WHERE image_path = 'test.jpg'"
+    ).fetchone()
+    assert row[0] == "abc123"
 
 
 def test_receipt_items_name_not_null(db_conn):

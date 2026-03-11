@@ -24,7 +24,8 @@ import shutil
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
-CONFIG_DIR = SCRIPT_DIR.parent / "config"
+sys.path.insert(0, str(SCRIPT_DIR))
+from common import load_json_config
 
 DEFAULT_INTERVAL = 5
 DEFAULT_MAX_FRAMES = 100
@@ -33,13 +34,10 @@ DEFAULT_WHISPER_MODEL = "small"
 
 def load_config() -> dict:
     """Load PCE config."""
-    config_path = CONFIG_DIR / "pce.json"
-    if not config_path.exists():
-        config_path = Path.home() / ".openclaw" / "workspace" / "config" / "pce.json"
-    if config_path.exists():
-        with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+    try:
+        return load_json_config("pce.json")
+    except FileNotFoundError:
+        return {}
 
 
 def check_ffmpeg() -> bool:

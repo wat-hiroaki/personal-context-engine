@@ -22,6 +22,10 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
+SCRIPT_DIR = Path(__file__).parent
+sys.path.insert(0, str(SCRIPT_DIR))
+from common import detect_encoding as _detect_encoding, row_to_json
+
 ENCODING_ORDER = ["utf-8-sig", "utf-8", "shift_jis", "cp932"]
 
 # よくあるクレカ明細のカラム名パターン
@@ -34,17 +38,7 @@ COMMON_MAPPINGS = {
 
 
 def detect_encoding(filepath: str) -> str:
-    for enc in ENCODING_ORDER:
-        try:
-            with open(filepath, "r", encoding=enc) as f:
-                f.read(1024)
-            return enc
-        except (UnicodeDecodeError, UnicodeError):
-            continue
-    raise ValueError(
-        f"Cannot detect encoding for {filepath}. "
-        f"Tried: {', '.join(ENCODING_ORDER)}"
-    )
+    return _detect_encoding(filepath, ENCODING_ORDER)
 
 
 def parse_price(price_str: str) -> float | None:
@@ -153,7 +147,7 @@ def import_generic_csv(csv_path: str, db_path: str, source: str) -> dict:
                         stats["skipped"] += 1
                         continue
 
-                    raw_data = ",".join(f"{k}={v}" for k, v in row.items())
+                    raw_data = row_to_json(row)
 
                     cursor.execute(
                         """INSERT INTO purchase_history

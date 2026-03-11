@@ -24,9 +24,9 @@ AI is already powerful enough. The problem is that AI doesn't know *you*. PCE br
 
 ### Prerequisites
 
-- [OpenClaw](https://openclaw.ai) installed and running
 - Python 3.10+
 - SQLite 3 (usually pre-installed)
+- Optional: [OpenClaw](https://openclaw.ai) for natural language interface
 
 ### Optional Dependencies
 
@@ -52,9 +52,22 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-### Verify
+### Try with Sample Data
 
-Tell OpenClaw:
+```bash
+# Import sample Amazon JP orders
+python3 scripts/import_ec_plugins.py examples/sample_amazon_jp.csv
+
+# Import sample credit card statement
+python3 scripts/import_ec_plugins.py examples/sample_credit_card.csv
+
+# Bootstrap your possessions interactively
+python3 scripts/bootstrap.py
+```
+
+### With OpenClaw (optional)
+
+If you have OpenClaw installed, you can use natural language:
 
 ```
 Register my protein powder. SAVAS whey, bought on Amazon for 2980 yen.
@@ -131,6 +144,18 @@ python3 scripts/process_video.py room_tour.mp4
 python3 scripts/process_video.py room_tour.mp4 --interval 3 --whisper-model medium
 ```
 
+### Bootstrap Your Possessions
+
+```bash
+# Interactive wizard — walk through categories one by one
+python3 scripts/bootstrap.py
+
+# Non-interactive (pipe from file or other tools)
+echo "kitchen:Rice cooker
+supplement:Protein / SAVAS
+electronics:MacBook Pro" | python3 scripts/bootstrap.py --non-interactive
+```
+
 ### Natural Language (via OpenClaw)
 
 ```
@@ -152,12 +177,15 @@ personal-context-engine/
 │   ├── video-cataloger/
 │   └── life-dashboard/
 ├── scripts/                    # Python scripts
+│   ├── common.py               # Shared utilities (encoding, parsing, config)
 │   ├── import_ec_plugins.py    # Plugin-based EC importer
 │   ├── import_receipt.py       # Receipt OCR
 │   ├── process_video.py        # Video frame extraction + Whisper
+│   ├── bootstrap.py            # Interactive possession bootstrap wizard
 │   ├── import_amazon.py        # Amazon CSV (legacy)
 │   ├── import_rakuten.py       # Rakuten CSV (legacy)
 │   └── import_csv_generic.py   # Generic CSV (legacy)
+├── examples/                   # Sample CSV files for testing
 ├── schema/                     # SQLite schema & migrations
 ├── config/                     # Configuration files
 │   ├── pce.json                # Main configuration
@@ -205,18 +233,19 @@ For accessing your data from other devices (e.g., checking your shopping list on
 | v0.1 | DB schema + possession-manager + basic CSV import | Done |
 | v0.2 | Plugin EC importer + receipt OCR + video-cataloger + Whisper | Done |
 | v0.3 | life-dashboard + heartbeat automation | Done |
-| v1.0 | Tests, CI, documentation, public release | Current |
+| v1.0 | Tests, CI, documentation, public release | Done |
 | v1.x+ | MCP server / EC auto-order / semantic search | Future |
 
 ## Development
 
 ```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
 # Run tests
-pip install pytest
 pytest tests/ -v
 
 # Lint
-pip install ruff
 ruff check scripts/ tests/
 ```
 

@@ -15,96 +15,17 @@ import sys
 import csv
 import sqlite3
 import os
-import json
 import argparse
-import re
 from pathlib import Path
-from datetime import datetime
 
 SCRIPT_DIR = Path(__file__).parent
-CONFIG_DIR = SCRIPT_DIR.parent / "config"
-ENCODING_ORDER_DEFAULT = ["utf-8-sig", "utf-8", "shift_jis", "cp932", "iso-8859-1", "latin-1"]
+sys.path.insert(0, str(SCRIPT_DIR))
+from common import detect_encoding, parse_price_generic as parse_price, parse_date_multi as parse_date, load_json_config, row_to_json, ENCODING_ORDER_DEFAULT
 
 
 def load_ec_formats() -> dict:
     """Load EC format definitions from config."""
-    config_path = CONFIG_DIR / "ec_formats.json"
-    # Fallback: check OpenClaw workspace
-    if not config_path.exists():
-        config_path = Path.home() / ".openclaw" / "workspace" / "config" / "ec_formats.json"
-    if not config_path.exists():
-        print("Error: ec_formats.json not found")
-        sys.exit(1)
-    with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def detect_encoding(filepath: str, encoding_order: list[str]) -> str:
-    """Try multiple encodings and return the first that works."""
-    for enc in encoding_order:
-        try:
-            with open(filepath, "r", encoding=enc) as f:
-                f.read(4096)
-            return enc
-        except (UnicodeDecodeError, UnicodeError):
-            continue
-
-    # Fallback: try chardet if available
-    try:
-        import chardet
-        with open(filepath, "rb") as f:
-            result = chardet.detect(f.read(8192))
-        if result["encoding"]:
-            return result["encoding"]
-    except ImportError:
-        pass
-
-    raise ValueError(f"Cannot detect encoding for {filepath}")
-
-
-def parse_price(price_str: str, currency_symbols: dict) -> tuple[float | None, str]:
-    """Parse price string and detect currency. Returns (amount, currency_code)."""
-    if not price_str:
-        return None, "USD"
-
-    price_str = price_str.strip()
-    currency = "USD"  # Default
-
-    # Detect currency from symbol
-    for symbol, code in sorted(currency_symbols.items(), key=lambda x: -len(x[0])):
-        if symbol in price_str:
-            currency = code
-            price_str = price_str.replace(symbol, "")
-            break
-
-    # Detect JPY from context (no decimal point, or 円 suffix)
-    if "円" in price_str:
-        currency = "JPY"
-        price_str = price_str.replace("円", "")
-
-    cleaned = re.sub(r"[^\d.\-]", "", price_str)
-    try:
-        return float(cleaned), currency
-    except ValueError:
-        return None, currency
-
-
-def parse_date(date_str: str, date_formats: list[str]) -> str | None:
-    """Parse date string using provided format list."""
-    if not date_str:
-        return None
-    date_str = date_str.strip()
-    for fmt in date_formats:
-        try:
-            return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
-        except ValueError:
-            continue
-    # Last resort: try ISO format
-    try:
-        return datetime.fromisoformat(date_str.replace("Z", "+00:00")).strftime("%Y-%m-%d")
-    except (ValueError, TypeError):
-        pass
-    return None
+    return load_json_config("ec_formats.json")
 
 
 def match_column(headers: list[str], candidates: list[str]) -> str | None:
@@ -236,7 +157,7 @@ def import_csv(csv_path: str, db_path: str, format_key: str | None, source_overr
                         stats["skipped"] += 1
                         continue
 
-                    raw_data = ",".join(f"{k}={v}" for k, v in row.items())
+                    raw_data = row_to_json(row)
 
                     cursor.execute(
                         """INSERT INTO purchase_history

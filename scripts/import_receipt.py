@@ -24,6 +24,9 @@ import argparse
 import hashlib
 from pathlib import Path
 
+SCRIPT_DIR = Path(__file__).parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
 try:
     import pytesseract
     from PIL import Image  # noqa: F401 — needed to verify Pillow install
@@ -33,9 +36,6 @@ except ImportError as e:
     print(f"Error: Missing dependency: {e}")
     print("Install: pip install pytesseract Pillow opencv-python-headless")
     sys.exit(1)
-
-SCRIPT_DIR = Path(__file__).parent
-CONFIG_DIR = SCRIPT_DIR.parent / "config"
 
 # Language mapping for Tesseract
 LANG_MAP = {
@@ -247,8 +247,8 @@ def detect_currency(text: str) -> str:
 
 
 def compute_image_hash(image_path: str) -> str:
-    """Compute MD5 hash of image file for duplicate detection."""
-    h = hashlib.md5()
+    """Compute SHA-256 hash of image file for duplicate detection."""
+    h = hashlib.sha256()
     with open(image_path, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             h.update(chunk)
@@ -275,8 +275,8 @@ def save_to_db(
     # Check for duplicate scan
     image_hash = compute_image_hash(image_path)
     cursor.execute(
-        "SELECT id FROM receipt_scans WHERE image_path = ? OR image_path LIKE ?",
-        (os.path.abspath(image_path), f"%{image_hash}%"),
+        "SELECT id FROM receipt_scans WHERE image_hash = ? OR image_path = ?",
+        (image_hash, os.path.abspath(image_path)),
     )
     existing = cursor.fetchone()
     if existing:
@@ -288,9 +288,9 @@ def save_to_db(
         # Insert receipt scan
         cursor.execute(
             """INSERT INTO receipt_scans
-               (image_path, store_name, total_amount, currency, receipt_date, ocr_raw_text, ocr_confidence, language)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (f"{os.path.abspath(image_path)}|{image_hash}", store_name, total, currency, receipt_date, raw_text, confidence, lang),
+               (image_path, store_name, total_amount, currency, receipt_date, ocr_raw_text, ocr_confidence, language, image_hash)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (os.path.abspath(image_path), store_name, total, currency, receipt_date, raw_text, confidence, lang, image_hash),
         )
         receipt_id = cursor.lastrowid
 
