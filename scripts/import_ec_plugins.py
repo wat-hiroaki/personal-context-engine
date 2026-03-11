@@ -133,10 +133,10 @@ def import_csv(csv_path: str, db_path: str, format_key: str | None, source_overr
         print(f"Column mapping: item={col_item}, price={col_price}, date={col_date}, order={col_order}")
 
         conn = sqlite3.connect(db_path)
-        conn.execute("PRAGMA foreign_keys = ON")
-        cursor = conn.cursor()
-
         try:
+            conn.execute("PRAGMA foreign_keys = ON")
+            cursor = conn.cursor()
+
             for row_num, row in enumerate(reader, start=2):  # start=2 because row 1 is header
                 try:
                     item_name = row.get(col_item, "").strip() if col_item else ""

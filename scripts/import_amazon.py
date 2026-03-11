@@ -68,7 +68,8 @@ def parse_date(date_str: str) -> str | None:
         "%Y-%m-%d",
         "%Y年%m月%d日",
         "%m/%d/%Y",
-        "%d/%m/%Y",
+        # Note: %d/%m/%Y omitted — ambiguous with %m/%d/%Y.
+        # Amazon JP uses Y/M/D, Amazon US uses M/D/Y.
     ]
     for fmt in formats:
         try:
@@ -111,32 +112,29 @@ def import_amazon_csv(csv_path: str, db_path: str) -> dict:
 
     encoding = detect_encoding(csv_path)
     conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA foreign_keys = ON")
-    cursor = conn.cursor()
+    try:
+        conn.execute("PRAGMA foreign_keys = ON")
+        cursor = conn.cursor()
 
-    with open(csv_path, "r", encoding=encoding) as f:
-        reader = csv.DictReader(f)
-        if reader.fieldnames is None:
-            print("Error: CSV has no headers")
-            conn.close()
-            stats["errors"] = 1
-            return stats
+        with open(csv_path, "r", encoding=encoding) as f:
+            reader = csv.DictReader(f)
+            if reader.fieldnames is None:
+                print("Error: CSV has no headers")
+                stats["errors"] = 1
+                return stats
 
-        col_map = detect_column_mapping(reader.fieldnames)
-        if not col_map:
-            print(f"Error: Cannot detect Amazon CSV format. Headers: {reader.fieldnames}")
-            conn.close()
-            stats["errors"] = 1
-            return stats
+            col_map = detect_column_mapping(reader.fieldnames)
+            if not col_map:
+                print(f"Error: Cannot detect Amazon CSV format. Headers: {reader.fieldnames}")
+                stats["errors"] = 1
+                return stats
 
-        # Detect currency based on column mapping language
-        is_jp = any(k in AMAZON_COLUMNS for k in col_map.keys())
-        currency = "JPY" if is_jp else "USD"
+            # Detect currency based on column mapping language
+            is_jp = any(k in AMAZON_COLUMNS for k in col_map.keys())
+            currency = "JPY" if is_jp else "USD"
 
-        # Reverse map: semantic name -> csv header
-        rev_map: dict[str, str] = {v: k for k, v in col_map.items()}
-
-        try:
+            # Reverse map: semantic name -> csv header
+            rev_map: dict[str, str] = {v: k for k, v in col_map.items()}
             for row_num, row in enumerate(reader, start=2):  # start=2 because row 1 is header
                 try:
                     order_id = row.get(rev_map.get("order_id", ""), "").strip()
@@ -162,9 +160,9 @@ def import_amazon_csv(csv_path: str, db_path: str) -> dict:
                     print(f"Warning: Skipping row {row_num}: {e}")
                     stats["errors"] += 1
 
-            conn.commit()
-        finally:
-            conn.close()
+        conn.commit()
+    finally:
+        conn.close()
     return stats
 
 

@@ -17,16 +17,23 @@ import sys
 import csv
 import sqlite3
 import os
-import re
 import argparse
 from pathlib import Path
-from datetime import datetime
 
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
-from common import detect_encoding as _detect_encoding, row_to_json
+from common import detect_encoding as _detect_encoding, parse_price_generic, parse_date_multi, row_to_json
 
 ENCODING_ORDER = ["utf-8-sig", "utf-8", "shift_jis", "cp932"]
+
+DATE_FORMATS = [
+    "%Y/%m/%d",
+    "%Y-%m-%d",
+    "%Y年%m月%d日",
+    "%m/%d/%Y",
+    "%Y/%m/%d %H:%M",
+    "%Y-%m-%d %H:%M:%S",
+]
 
 # よくあるクレカ明細のカラム名パターン
 COMMON_MAPPINGS = {
@@ -41,38 +48,14 @@ def detect_encoding(filepath: str) -> str:
     return _detect_encoding(filepath, ENCODING_ORDER)
 
 
-def parse_price(price_str: str) -> float | None:
-    if not price_str:
-        return None
-    # Detect if the value is negative (has minus sign or parentheses)
-    is_negative = bool(re.search(r"[-\(]", price_str))
-    # Remove everything except digits and decimal point
-    cleaned = re.sub(r"[^\d.]", "", price_str)
-    try:
-        val = float(cleaned)
-        return -val if is_negative else val
-    except ValueError:
-        return None
+def parse_price(price_str: str) -> tuple[float | None, str]:
+    """Parse price and detect currency using common module."""
+    return parse_price_generic(price_str)
 
 
 def parse_date(date_str: str) -> str | None:
-    if not date_str:
-        return None
-    date_str = date_str.strip()
-    formats = [
-        "%Y/%m/%d",
-        "%Y-%m-%d",
-        "%Y年%m月%d日",
-        "%m/%d/%Y",
-        "%Y/%m/%d %H:%M",
-        "%Y-%m-%d %H:%M:%S",
-    ]
-    for fmt in formats:
-        try:
-            return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
-        except ValueError:
-            continue
-    return None
+    """Parse date using common module."""
+    return parse_date_multi(date_str, DATE_FORMATS)
 
 
 def auto_detect_mapping(headers: list[str]) -> dict[str, str]:
@@ -102,31 +85,29 @@ def import_generic_csv(csv_path: str, db_path: str, source: str) -> dict:
 
     encoding = detect_encoding(csv_path)
     conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA foreign_keys = ON")
-    cursor = conn.cursor()
+    try:
+        conn.execute("PRAGMA foreign_keys = ON")
+        cursor = conn.cursor()
 
-    with open(csv_path, "r", encoding=encoding) as f:
-        reader = csv.DictReader(f)
-        if reader.fieldnames is None:
-            print("Error: CSV has no headers")
-            conn.close()
-            stats["errors"] = 1
-            return stats
+        with open(csv_path, "r", encoding=encoding) as f:
+            reader = csv.DictReader(f)
+            if reader.fieldnames is None:
+                print("Error: CSV has no headers")
+                stats["errors"] = 1
+                return stats
 
-        headers = [h.strip() for h in reader.fieldnames]
-        mapping = auto_detect_mapping(headers)
+            headers = [h.strip() for h in reader.fieldnames]
+            mapping = auto_detect_mapping(headers)
 
-        if "item_name" not in mapping and "price" not in mapping:
-            print("Warning: Could not auto-detect column mapping.")
-            print(f"Available columns: {headers}")
-            print(f"Detected mapping: {mapping}")
-            print("Will import with available data.")
-
-        try:
+            if "item_name" not in mapping and "price" not in mapping:
+                print("Warning: Could not auto-detect column mapping.")
+                print(f"Available columns: {headers}")
+                print(f"Detected mapping: {mapping}")
+                print("Will import with available data.")
             for row_num, row in enumerate(reader, start=2):  # start=2 because row 1 is header
                 try:
                     item_name = row.get(mapping.get("item_name", ""), "").strip()
-                    price = parse_price(row.get(mapping.get("price", ""), ""))
+                    price, currency = parse_price(row.get(mapping.get("price", ""), ""))
                     purchase_date = parse_date(row.get(mapping.get("purchase_date", ""), ""))
                     order_id = row.get(mapping.get("order_id", ""), "").strip() or None
 
@@ -152,17 +133,17 @@ def import_generic_csv(csv_path: str, db_path: str, source: str) -> dict:
                     cursor.execute(
                         """INSERT INTO purchase_history
                            (source, item_name, price, currency, purchase_date, order_id, raw_data)
-                           VALUES (?, ?, ?, 'JPY', ?, ?, ?)""",
-                        (source, item_name, price, purchase_date, order_id, raw_data),
+                           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                        (source, item_name, price, currency, purchase_date, order_id, raw_data),
                     )
                     stats["imported"] += 1
                 except Exception as e:
                     print(f"Warning: Skipping row {row_num}: {e}")
                     stats["errors"] += 1
 
-            conn.commit()
-        finally:
-            conn.close()
+        conn.commit()
+    finally:
+        conn.close()
     return stats
 
 
