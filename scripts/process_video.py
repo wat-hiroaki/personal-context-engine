@@ -31,6 +31,20 @@ DEFAULT_INTERVAL = 5
 DEFAULT_MAX_FRAMES = 100
 DEFAULT_WHISPER_MODEL = "small"
 
+# Blocked URL/protocol schemes to prevent SSRF via ffmpeg
+BLOCKED_SCHEMES = (
+    "http://", "https://", "rtsp://", "rtp://", "ftp://",
+    "data:", "concat:", "subfile:", "tee:", "zmq:", "tcp://", "udp://",
+)
+
+
+def validate_local_path(path: str) -> None:
+    """Reject URL inputs that ffmpeg would accept as network sources."""
+    if any(path.lower().startswith(scheme) for scheme in BLOCKED_SCHEMES):
+        raise ValueError(f"URL inputs are not supported for security reasons: {path[:50]}")
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"File not found: {path}")
+
 
 def load_config() -> dict:
     """Load PCE config."""
@@ -189,6 +203,11 @@ def process_video(
     keep_frames: bool = False,
 ) -> dict:
     """Main function: process video for item cataloging."""
+    validate_local_path(video_path)
+
+    if interval < 1:
+        raise ValueError(f"Interval must be >= 1 second, got {interval}")
+
     result = {
         "session_id": None,
         "frame_count": 0,
@@ -252,8 +271,10 @@ def process_video(
             result["frames_dir"] = frames_dir
             print(f"\nFrames kept at: {frames_dir}")
         else:
+            # Clean up entire temp directory (frames + audio + prompts)
             result["frames_dir"] = None
-            cleanup_frames(frames_dir)
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            print("Temp files deleted (privacy protection).")
 
     except Exception as e:
         # Clean up on error
@@ -301,13 +322,10 @@ def main():
         cleanup_frames(args.cleanup)
         return
 
-    if not os.path.exists(args.video_path):
-        print(f"Error: Video not found: {args.video_path}")
-        sys.exit(1)
-
-    # Reject URLs (ffmpeg accepts URLs which could cause unintended network requests)
-    if args.video_path.startswith(("http://", "https://", "rtsp://", "ftp://")):
-        print("Error: URL inputs are not supported. Please provide a local file path.")
+    try:
+        validate_local_path(args.video_path)
+    except (ValueError, FileNotFoundError) as e:
+        print(f"Error: {e}")
         sys.exit(1)
 
     if not check_ffmpeg():

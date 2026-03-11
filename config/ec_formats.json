@@ -110,5 +110,5 @@
     "A$": "AUD",
     "C$": "CAD"
   },
-  "encoding_order": ["utf-8-sig", "utf-8", "shift_jis", "cp932", "iso-8859-1", "latin-1"]
+  "encoding_order": ["utf-8-sig", "utf-8", "shift_jis", "cp932"]
 }

@@ -5,7 +5,9 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-ENCODING_ORDER_DEFAULT = ["utf-8-sig", "utf-8", "shift_jis", "cp932", "iso-8859-1", "latin-1"]
+# iso-8859-1/latin-1 omitted: they accept any byte sequence, masking real encoding.
+# chardet fallback handles truly unknown encodings better.
+ENCODING_ORDER_DEFAULT = ["utf-8-sig", "utf-8", "shift_jis", "cp932"]
 
 CONFIG_DIR = Path(__file__).parent.parent / "config"
 OPENCLAW_CONFIG_DIR = Path.home() / ".openclaw" / "workspace" / "config"

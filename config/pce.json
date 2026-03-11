@@ -23,7 +23,7 @@
     "default": 30
   },
   "alert_threshold": 0.8,
-  "csv_encoding_order": ["utf-8-sig", "utf-8", "shift_jis", "cp932", "iso-8859-1", "latin-1"],
+  "csv_encoding_order": ["utf-8-sig", "utf-8", "shift_jis", "cp932"],
   "video": {
     "frame_interval_seconds": 5,
     "max_frames": 100,
