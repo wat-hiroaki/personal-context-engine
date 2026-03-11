@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.0.1] - 2026-03-11
+
+### Security
+- Block SSRF via ffmpeg URL schemes (http, rtsp, rtp, ftp, data, concat, etc.)
+- Receipt image hashing upgraded from MD5 to SHA-256
+- Remove `iso-8859-1`/`latin-1` from encoding detection defaults (false-positive catch-all)
+
+### Fixed
+- Migration v1.0 is now fully idempotent (safe to re-run without data duplication)
+- `schema_version` table tracks applied migrations
+- Connection leak prevention: all DB connections wrapped in try/finally
+- `process_video.py` temp directory cleanup now covers all temp files (not just frames)
+- `import_csv_generic.py` hardcoded JPY currency replaced with automatic detection
+- `bootstrap.py` duplicate prevention (skip items with same name+category)
+- Ambiguous `%d/%m/%Y` date format removed from Amazon parser
+
+### Added
+- 19 new edge case tests: empty/malformed CSV, Unicode (emoji, full-width), Shift-JIS encoding, bootstrap parsing, migration idempotency, encoding detection, config loading
+- Currency detection tests for generic CSV importer
+- Bootstrap duplicate prevention tests
+
 ## [1.0.0] - 2026-03-11
 
 ### Added
